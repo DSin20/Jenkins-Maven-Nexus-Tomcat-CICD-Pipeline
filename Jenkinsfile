@@ -7,12 +7,19 @@ pipeline{
     stages{
         stage('Git Checkout'){
             steps{
-                git credentialsId: 'github', branch: 'nexus', url: 'https://github.com//MavenBuild'
+                git credentialsId: 'github', branch: 'nexus', url: 'https://github.com/bcreddydevops/chinna-app'
             }
         }
         stage('Maven build'){
             steps{
                 sh 'mvn clean package'
+            }
+        }
+        stage('Generate sonarqube-analysis'){
+            steps{
+                withSonarQubeEnv(installationName: 'sonarqube-8', credentialsId: 'jenkins-sonar-token') {
+                 sh 'mvn sonar:sonar'
+                }
             }
         }
         stage('Publish to Nexus'){
@@ -36,6 +43,17 @@ pipeline{
         }
         stage('Deploy Tomcat'){
             steps {
+                sshagent(['tomcat_PEM']){
+                    sh """
+                        scp -o StrictHostKeyChecking=no target/*.war ubuntu@3.99.128.51:/opt/tomcat/webapps
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.99.128.51 /opt/tomcat/bin/startup.sh
+                        
+                     """   
+                }
+            }
+        }
+    }
+}
                 sshagent(['tomcat_PEM']){
                     sh """
                         scp -o StrictHostKeyChecking=no target/*.war ubuntu@3.99.128.51:/opt/tomcat/webapps
